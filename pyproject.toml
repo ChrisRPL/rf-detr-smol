@@ -1,0 +1,10 @@
+[project]
+name = "rf-detr-smol"
+version = "0.1.0"
+description = "RF-DETR architecture analysis for small objects detection."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pillow>=12.2.0",
+    "supervision>=0.29.1",
+]
