@@ -69,7 +69,14 @@ def convert_split(
     out_json = Path(out_json)
 
     image_paths = sorted(images_dir.glob("*.jpg"))
-    coco: dict = {"images": [], "annotations": [], "categories": CATEGORY_LIST}
+    coco: dict = {
+        # "info"/"licenses" are required by pycocotools' loadRes.
+        "info": {"description": "VisDrone2019-DET converted to COCO"},
+        "licenses": [],
+        "images": [],
+        "annotations": [],
+        "categories": CATEGORY_LIST,
+    }
 
     ann_id = 1
     for img_id, img_path in enumerate(image_paths, start=1):
@@ -97,6 +104,9 @@ def convert_split(
                 x, y, bw, bh = map(float, parts[:4])
                 score = int(parts[4])
                 cat = int(parts[5])
+                # Fields 7/8 are absent in test-challenge annotations.
+                truncation = int(parts[6]) if len(parts) > 6 and parts[6] != "" else 0
+                occlusion = int(parts[7]) if len(parts) > 7 and parts[7] != "" else 0
 
                 if skip_ignored and (score == 0 or cat in (0, 11)):
                     continue
@@ -117,6 +127,11 @@ def convert_split(
                         "bbox": [x, y, bw, bh],  # COCO style: [x_min, y_min, w, h]
                         "area": bw * bh,
                         "iscrowd": 0,
+                        # VisDrone extras (0=none, 1=partial/1-50%, 2=heavy/50%+
+                        # occlusion; truncation 0=none, 1=partial) — consumed by
+                        # the failure-taxonomy analysis, ignored by COCO loaders.
+                        "truncation": truncation,
+                        "occlusion": occlusion,
                     }
                 )
                 ann_id += 1

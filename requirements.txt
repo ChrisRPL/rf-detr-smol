@@ -1,0 +1,3 @@
+# Remote run contract — installed by the fixed run command on every node.
+rfdetr[train]==1.8.3
+huggingface_hub[hf_transfer]>=0.26
