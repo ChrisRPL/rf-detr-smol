@@ -22,6 +22,28 @@ import experiment_config as cfg  # noqa: E402
 from scripts.prepare_data import prepare  # noqa: E402
 
 
+def check_env() -> None:
+    """Fail fast — with the REAL traceback — if a runtime import is broken.
+
+    rfdetr raises a generic "install albumentations" ImportError mid-training
+    that hides the underlying cause (e.g. cv2/libGL or numpy ABI conflicts).
+    """
+    import importlib
+    import traceback
+
+    broken = []
+    for mod in ("numpy", "cv2", "albumentations", "torch", "pycocotools", "rfdetr"):
+        try:
+            m = importlib.import_module(mod)
+            print(f"[env] {mod} {getattr(m, '__version__', '?')}")
+        except Exception:
+            print(f"[env] IMPORT FAILURE: {mod}")
+            traceback.print_exc()
+            broken.append(mod)
+    if broken:
+        raise SystemExit(f"broken environment, imports failed: {broken}")
+
+
 def build_model():
     import rfdetr
 
@@ -67,6 +89,9 @@ def main() -> None:
     t0 = time.time()
     knobs = {k: v for k, v in vars(cfg).items() if k.isupper()}
     print(f"== CONFIG ==\n{knobs}")
+
+    print("\n== ENV CHECK ==", flush=True)
+    check_env()
 
     print("\n== DATA PREP ==", flush=True)
     dataset_dir = prepare(cfg.HF_DATASET_REPO, cfg.DATA_ROOT, cfg.DATASET_DIR)

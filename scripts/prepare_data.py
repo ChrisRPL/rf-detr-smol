@@ -16,7 +16,8 @@ import os
 import zipfile
 from pathlib import Path
 
-os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
+# Fast downloads on hub>=1.x (hf_transfer is deprecated in favor of Xet).
+os.environ.setdefault("HF_XET_HIGH_PERFORMANCE", "1")
 
 from huggingface_hub import hf_hub_download  # noqa: E402
 

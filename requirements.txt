@@ -1,3 +1,7 @@
 # Remote run contract — installed by the fixed run command on every node.
 rfdetr[train]==1.8.3
-huggingface_hub[hf_transfer]>=0.26
+# Explicit: rfdetr's [train] extra needs these importable at runtime; the HF
+# CUDA image has been seen to break the albumentations/cv2 import chain.
+albumentations>=1.4.24,<3.0
+opencv-python-headless>=4.9
+huggingface_hub>=0.26
