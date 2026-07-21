@@ -22,6 +22,36 @@ import experiment_config as cfg  # noqa: E402
 from scripts.prepare_data import prepare  # noqa: E402
 
 
+def ensure_headless_cv2() -> None:
+    """Replace broken GUI opencv builds with the headless one.
+
+    The HF CUDA image ships opencv-python compiled against libGL, which the
+    container lacks (`ImportError: libGL.so.1`), and it shadows any headless
+    install. Uninstalling every variant and reinstalling headless is the only
+    reliable in-place fix (run #2, d8f6ec8f, proved coexistence stays broken).
+    """
+    import importlib
+    import subprocess
+
+    try:
+        importlib.import_module("cv2")
+        print("[env] cv2 imports cleanly, no repair needed")
+        return
+    except ImportError as e:
+        print(f"[env] cv2 broken ({e}); reinstalling opencv-python-headless")
+    pip = [sys.executable, "-m", "pip"]
+    subprocess.run(
+        [*pip, "uninstall", "-q", "-y", "opencv-python", "opencv-contrib-python",
+         "opencv-python-headless"],
+        check=False,
+    )
+    subprocess.run(
+        [*pip, "install", "-q", "--force-reinstall", "--no-deps",
+         "opencv-python-headless>=4.9"],
+        check=True,
+    )
+
+
 def check_env() -> None:
     """Fail fast — with the REAL traceback — if a runtime import is broken.
 
@@ -91,6 +121,7 @@ def main() -> None:
     print(f"== CONFIG ==\n{knobs}")
 
     print("\n== ENV CHECK ==", flush=True)
+    ensure_headless_cv2()
     check_env()
 
     print("\n== DATA PREP ==", flush=True)
