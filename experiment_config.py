@@ -7,7 +7,7 @@ diff reads as the experiment's definition.
 
 # ---- model -----------------------------------------------------------------
 MODEL_VARIANT = "base"  # rfdetr variant: nano | small | medium | base | large
-RESOLUTION = 560        # square input size; must be divisible by 56 for base
+RESOLUTION = 784        # square input size; must be divisible by 56 for base
 NUM_QUERIES = None      # None -> rfdetr default (300). Set an int to override.
 
 # ---- training --------------------------------------------------------------
