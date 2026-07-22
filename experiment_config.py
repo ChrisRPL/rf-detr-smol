@@ -7,13 +7,13 @@ diff reads as the experiment's definition.
 
 # ---- model -----------------------------------------------------------------
 MODEL_VARIANT = "base"  # rfdetr variant: nano | small | medium | base | large
-RESOLUTION = 560        # square input size; must be divisible by 56 for base
+RESOLUTION = 1008      # square input size; must be divisible by 56 for base
 NUM_QUERIES = None      # None -> rfdetr default (300). Set an int to override.
 
 # ---- training --------------------------------------------------------------
 EPOCHS = 24
-BATCH_SIZE = 8
-GRAD_ACCUM_STEPS = 2    # effective batch = BATCH_SIZE * GRAD_ACCUM_STEPS
+BATCH_SIZE = 4
+GRAD_ACCUM_STEPS = 4    # effective batch = BATCH_SIZE * GRAD_ACCUM_STEPS
 LR = 1e-4               # rfdetr defaults; listed here so sweeps are one-line diffs
 LR_ENCODER = 1.5e-4
 NUM_WORKERS = 8
