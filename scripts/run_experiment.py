@@ -89,6 +89,8 @@ def build_model():
     if cfg.NUM_QUERIES is not None:
         kwargs["num_queries"] = cfg.NUM_QUERIES
         kwargs["num_select"] = cfg.NUM_QUERIES
+    if getattr(cfg, "GPU_DEVICE", None) is not None:
+        kwargs["device"] = f"cuda:{cfg.GPU_DEVICE}"
     print(f"[model] {cls.__name__}({kwargs})")
     return cls(**kwargs)
 
@@ -106,7 +108,10 @@ def pick_eval_model(trained_model, output_dir: Path):
         try:
             from rfdetr.detr import RFDETR
 
-            model = RFDETR.from_checkpoint(path)
+            ckpt_kwargs = {}
+            if getattr(cfg, "GPU_DEVICE", None) is not None:
+                ckpt_kwargs["device"] = f"cuda:{cfg.GPU_DEVICE}"
+            model = RFDETR.from_checkpoint(path, **ckpt_kwargs)
             print(f"[eval] evaluating checkpoint: {path}")
             return model
         except Exception as e:  # fall back, but SAY so — never evaluate silently
