@@ -191,8 +191,16 @@ def main() -> None:
     print("\n== TRAIN ==", flush=True)
     model = build_model()
     t1 = time.time()
+    train_kwargs = {}
+    if getattr(cfg, "GPU_DEVICE", None) is not None:
+        # ModelConfig.device only places the initial weights; the PTL trainer
+        # picks its own device and defaults to cuda:0 (run 4a42d7fa OOM'd when
+        # two siblings collided there). train()'s device kwarg maps to
+        # accelerator="gpu", devices=[N] — the pin that actually sticks.
+        train_kwargs["device"] = f"cuda:{cfg.GPU_DEVICE}"
     model.train(
         dataset_dir=str(dataset_dir),
+        **train_kwargs,
         epochs=cfg.EPOCHS,
         batch_size=cfg.BATCH_SIZE,
         grad_accum_steps=cfg.GRAD_ACCUM_STEPS,
