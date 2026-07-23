@@ -19,6 +19,16 @@ logging.basicConfig(
 )
 
 import experiment_config as cfg  # noqa: E402
+
+# Pin the GPU before anything can initialize CUDA. rfdetr 1.8.3's
+# train(device="cuda:N") path crashes (list.strip() bug, run 67838ba4), and
+# ModelConfig.device alone doesn't bind the PTL trainer (run 4a42d7fa OOM'd on
+# a shared card) — visibility masking is the pin that always works.
+if getattr(cfg, "GPU_DEVICE", None) is not None:
+    import os
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(cfg.GPU_DEVICE)
+
 from scripts.prepare_data import prepare  # noqa: E402
 
 
@@ -98,7 +108,9 @@ def expand_query_checkpoint(cls, num_queries: int) -> str:
         raise SystemExit(
             f"NUM_QUERIES={num_queries} must be a multiple of {base_queries}"
         )
-    dst = src.with_name(f"{src.stem}-q{num_queries}{src.suffix}")
+    # v2: also rewrites the checkpoint's stored num_queries so rfdetr's
+    # per-group slicer validates instead of warning + flat-slice fallback.
+    dst = src.with_name(f"{src.stem}-q{num_queries}-v2{src.suffix}")
     if dst.is_file():
         print(f"[model] reusing expanded checkpoint {dst}")
         return str(dst)
@@ -120,6 +132,16 @@ def expand_query_checkpoint(cls, num_queries: int) -> str:
         noise[:, :per_group, :] = 0  # first copy stays exactly pretrained
         sd[key] = (tiled + noise).reshape(-1, d)
         print(f"[model] expanded {key}: {(n, d)} -> {tuple(sd[key].shape)}")
+    args = ckpt.get("args")
+    if args is not None:
+        try:
+            if isinstance(args, dict):
+                args["num_queries"] = num_queries
+            else:
+                args.num_queries = num_queries
+            print(f"[model] checkpoint args.num_queries -> {num_queries}")
+        except Exception as e:
+            print(f"[model] WARNING: could not update checkpoint args: {e!r}")
     torch.save(ckpt, dst)
     print(f"[model] wrote expanded checkpoint {dst}")
     return str(dst)
@@ -144,8 +166,6 @@ def build_model():
             kwargs["pretrain_weights"] = expand_query_checkpoint(
                 cls, cfg.NUM_QUERIES
             )
-    if getattr(cfg, "GPU_DEVICE", None) is not None:
-        kwargs["device"] = f"cuda:{cfg.GPU_DEVICE}"
     print(f"[model] {cls.__name__}({kwargs})")
     return cls(**kwargs)
 
@@ -163,10 +183,7 @@ def pick_eval_model(trained_model, output_dir: Path):
         try:
             from rfdetr.detr import RFDETR
 
-            ckpt_kwargs = {}
-            if getattr(cfg, "GPU_DEVICE", None) is not None:
-                ckpt_kwargs["device"] = f"cuda:{cfg.GPU_DEVICE}"
-            model = RFDETR.from_checkpoint(path, **ckpt_kwargs)
+            model = RFDETR.from_checkpoint(path)
             print(f"[eval] evaluating checkpoint: {path}")
             return model
         except Exception as e:  # fall back, but SAY so — never evaluate silently
@@ -191,16 +208,8 @@ def main() -> None:
     print("\n== TRAIN ==", flush=True)
     model = build_model()
     t1 = time.time()
-    train_kwargs = {}
-    if getattr(cfg, "GPU_DEVICE", None) is not None:
-        # ModelConfig.device only places the initial weights; the PTL trainer
-        # picks its own device and defaults to cuda:0 (run 4a42d7fa OOM'd when
-        # two siblings collided there). train()'s device kwarg maps to
-        # accelerator="gpu", devices=[N] — the pin that actually sticks.
-        train_kwargs["device"] = f"cuda:{cfg.GPU_DEVICE}"
     model.train(
         dataset_dir=str(dataset_dir),
-        **train_kwargs,
         epochs=cfg.EPOCHS,
         batch_size=cfg.BATCH_SIZE,
         grad_accum_steps=cfg.GRAD_ACCUM_STEPS,
