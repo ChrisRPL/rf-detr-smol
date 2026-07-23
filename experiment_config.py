@@ -8,8 +8,8 @@ diff reads as the experiment's definition.
 # ---- model -----------------------------------------------------------------
 MODEL_VARIANT = "base"  # rfdetr variant: nano | small | medium | base | large
 RESOLUTION = 1008      # square input size; must be divisible by 56 for base
-NUM_QUERIES = None      # None -> rfdetr default (300). Set an int to override.
-GPU_DEVICE = 1          # None -> auto; int -> pin train+eval to cuda:<idx>
+NUM_QUERIES = 600       # up from 300: query-budget test at fixed 1008px
+GPU_DEVICE = 0          # None -> auto; int -> pin train+eval to cuda:<idx>
                         # (infra knob for multi-GPU hosts, not a science variable)
 
 # ---- training --------------------------------------------------------------
