@@ -74,6 +74,57 @@ def check_env() -> None:
         raise SystemExit(f"broken environment, imports failed: {broken}")
 
 
+def expand_query_checkpoint(cls, num_queries: int) -> str:
+    """Tile the pretrained query embeddings to support num_queries > 300.
+
+    COCO-pretrained RF-DETR ships 300 queries; refpoint_embed/query_feat are
+    Embedding(group_detr * 300, d) laid out group-major (inference slices
+    weight[:num_queries] as group 0). Loading with num_queries=600/900 fails on
+    shape mismatch (run c1626f69), so we expand the checkpoint: reshape to
+    (groups, 300, d), tile along the query dim, add small noise to the copies
+    so duplicated queries diverge during training, and keep copy 0 exact.
+    """
+    import torch
+
+    throwaway = cls(device="cpu")  # default 300-query build; downloads weights
+    src = Path(str(throwaway.model_config.pretrain_weights or "")).expanduser()
+    group_detr = throwaway.model_config.group_detr
+    base_queries = throwaway.model_config.num_queries
+    del throwaway
+    if not src.is_file():
+        src = Path.home() / ".roboflow" / "models" / "rf-detr-base.pth"
+    factor, rem = divmod(num_queries, base_queries)
+    if rem:
+        raise SystemExit(
+            f"NUM_QUERIES={num_queries} must be a multiple of {base_queries}"
+        )
+    dst = src.with_name(f"{src.stem}-q{num_queries}{src.suffix}")
+    if dst.is_file():
+        print(f"[model] reusing expanded checkpoint {dst}")
+        return str(dst)
+
+    try:
+        ckpt = torch.load(src, map_location="cpu", weights_only=True)
+    except Exception:
+        # The checkpoint stores non-tensor objects (e.g. train args). It is
+        # Roboflow's official artifact, MD5-validated by rfdetr just above in
+        # the throwaway build, so unpickling it is as trusted as rfdetr itself.
+        ckpt = torch.load(src, map_location="cpu", weights_only=False)
+    sd = ckpt["model"]
+    for key in ("refpoint_embed.weight", "query_feat.weight"):
+        w = sd[key]
+        n, d = w.shape
+        per_group = n // group_detr
+        tiled = w.reshape(group_detr, per_group, d).repeat(1, factor, 1)
+        noise = torch.randn_like(tiled) * (0.01 * w.std())
+        noise[:, :per_group, :] = 0  # first copy stays exactly pretrained
+        sd[key] = (tiled + noise).reshape(-1, d)
+        print(f"[model] expanded {key}: {(n, d)} -> {tuple(sd[key].shape)}")
+    torch.save(ckpt, dst)
+    print(f"[model] wrote expanded checkpoint {dst}")
+    return str(dst)
+
+
 def build_model():
     import rfdetr
 
@@ -89,6 +140,10 @@ def build_model():
     if cfg.NUM_QUERIES is not None:
         kwargs["num_queries"] = cfg.NUM_QUERIES
         kwargs["num_select"] = cfg.NUM_QUERIES
+        if cfg.NUM_QUERIES != 300:
+            kwargs["pretrain_weights"] = expand_query_checkpoint(
+                cls, cfg.NUM_QUERIES
+            )
     if getattr(cfg, "GPU_DEVICE", None) is not None:
         kwargs["device"] = f"cuda:{cfg.GPU_DEVICE}"
     print(f"[model] {cls.__name__}({kwargs})")
