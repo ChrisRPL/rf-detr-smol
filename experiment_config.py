@@ -7,10 +7,23 @@ diff reads as the experiment's definition.
 
 # ---- model -----------------------------------------------------------------
 MODEL_VARIANT = "base"  # rfdetr variant: nano | small | medium | base | large
-RESOLUTION = 1008      # square input size; must be divisible by 56 for base
-NUM_QUERIES = 900       # up from 300: query-budget test at fixed 1008px
+RESOLUTION = 1008       # square input size; must be divisible by 56 for base
+NUM_QUERIES = 900       # matches the parent checkpoint (queries-900 winner)
 GPU_DEVICE = 1          # None -> auto; int -> pin train+eval to cuda:<idx>
-                        # (infra knob for multi-GPU hosts, not a science variable)
+
+# ---- checkpoint reuse (inference-time experiments) --------------------------
+# Path to a trained checkpoint on the run host. When set, training is SKIPPED
+# and evaluation runs on this exact model — the correct design for pure
+# inference-time interventions (no seed variance). Missing file = hard error,
+# never a silent 6h retrain.
+REUSE_CHECKPOINT = "/home/kromanowski/.orx/runs/1f4d3fca-6f4a-410d-87b2-4520d07ef982/repo/output/checkpoint_best_ema.pth"
+
+# ---- tiled (SAHI-style) evaluation ------------------------------------------
+EVAL_TILED = True       # run a second eval pass with sliced inference
+TILE_SIZE = 1008        # square tile side, in ORIGINAL image pixels
+TILE_OVERLAP = 0.2      # fractional overlap between adjacent tiles
+TILE_MERGE_IOU = 0.6    # class-aware NMS threshold when merging tile boxes
+TILE_INCLUDE_FULL = True  # also merge a full-image pass (SAHI standard)
 
 # ---- training --------------------------------------------------------------
 EPOCHS = 24
