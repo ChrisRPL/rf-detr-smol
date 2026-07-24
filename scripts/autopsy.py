@@ -145,6 +145,9 @@ def run_autopsy(rf_model, dataset_dir: str) -> None:
     net = ctx.model                 # LWDETR nn.Module
     device = ctx.device
     res = ctx.resolution
+    # predict() moves the module lazily; we bypass predict, so move it ourselves
+    # (run 95647d6a: cuda input vs cpu weights at the first backbone conv).
+    net.to(device)
     net.eval()
     print(f"[autopsy] model resolution={res} num_queries={net.num_queries} "
           f"group_detr={net.group_detr} two_stage={net.two_stage} device={device}")
