@@ -9,6 +9,21 @@ diff reads as the experiment's definition.
 MODEL_VARIANT = "base"  # rfdetr variant: nano | small | medium | base | large
 RESOLUTION = 560        # square input size; must be divisible by 56 for base
 NUM_QUERIES = None      # None -> rfdetr default (300). Set an int to override.
+GPU_DEVICE = 0          # None -> auto; int -> pin train+eval to cuda:<idx>
+
+# ---- checkpoint reuse (inference-time experiments) --------------------------
+# Path to a trained checkpoint on the run host. When set, training is SKIPPED
+# and evaluation runs on this exact model — the correct design for pure
+# inference-time interventions (no seed variance). Missing file = hard error,
+# never a silent 6h retrain.
+REUSE_CHECKPOINT = None
+
+# ---- tiled (SAHI-style) evaluation ------------------------------------------
+EVAL_TILED = True       # run a second eval pass with sliced inference
+TILE_SIZE = 560         # square tile side, in ORIGINAL image pixels
+TILE_OVERLAP = 0.2      # fractional overlap between adjacent tiles
+TILE_MERGE_IOU = 0.6    # class-aware NMS threshold when merging tile boxes
+TILE_INCLUDE_FULL = True  # also merge a full-image pass (SAHI standard)
 
 # ---- training --------------------------------------------------------------
 EPOCHS = 24
