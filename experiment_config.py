@@ -7,10 +7,24 @@ diff reads as the experiment's definition.
 
 # ---- model -----------------------------------------------------------------
 MODEL_VARIANT = "base"  # rfdetr variant: nano | small | medium | base | large
-RESOLUTION = 1008      # square input size; must be divisible by 56 for base
-NUM_QUERIES = 900       # up from 300: query-budget test at fixed 1008px
-GPU_DEVICE = 1          # None -> auto; int -> pin train+eval to cuda:<idx>
-                        # (infra knob for multi-GPU hosts, not a science variable)
+RESOLUTION = 1008       # square input size; must be divisible by 56 for base
+NUM_QUERIES = 900       # matches the parent checkpoint (queries-900 winner)
+GPU_DEVICE = 2          # None -> auto; int -> pin train+eval to cuda:<idx>
+
+# ---- checkpoint reuse (inference-time experiments) --------------------------
+# Path to a trained checkpoint on the run host. When set, training is SKIPPED
+# and evaluation runs on this exact model — the correct design for pure
+# inference-time interventions (no seed variance). Missing file = hard error,
+# never a silent 6h retrain.
+REUSE_CHECKPOINT = "/home/kromanowski/.orx/runs/1f4d3fca-6f4a-410d-87b2-4520d07ef982/repo/output/checkpoint_best_ema.pth"
+
+# ---- tiled (SAHI-style) evaluation ------------------------------------------
+EVAL_TILED = False      # not used on this node
+EVAL_STANDARD = False   # parent numbers already recorded; autopsy only
+TILE_SIZE = 1008        # square tile side, in ORIGINAL image pixels
+TILE_OVERLAP = 0.2      # fractional overlap between adjacent tiles
+TILE_MERGE_IOU = 0.6    # class-aware NMS threshold when merging tile boxes
+TILE_INCLUDE_FULL = True  # also merge a full-image pass (SAHI standard)
 
 # ---- training --------------------------------------------------------------
 EPOCHS = 24
@@ -36,3 +50,8 @@ SIZE_BIN_EDGES = [0, 8, 16, 32, 96, float("inf")]
 DENSITY_BIN_EDGES = [0, 25, 50, 100, 200, float("inf")]  # GT objects per image
 
 OUTPUT_DIR = "output"
+
+# ---- autopsy (round 4) ------------------------------------------------------
+RUN_AUTOPSY = True        # stage-by-stage information tracing
+AUTOPSY_MAX_IMAGES = 548  # full val split
+AUTOPSY_VIZ_IMAGES = 6    # densest images get qualitative PNG artifacts
