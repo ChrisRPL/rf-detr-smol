@@ -238,9 +238,15 @@ def main() -> None:
         eval_model = pick_eval_model(model, Path(cfg.OUTPUT_DIR))
 
     print("\n== EVALUATE ==", flush=True)
-    from scripts.evaluate import evaluate
+    if getattr(cfg, "EVAL_STANDARD", True):
+        from scripts.evaluate import evaluate
 
-    evaluate(eval_model, str(dataset_dir))
+        evaluate(eval_model, str(dataset_dir))
+    if getattr(cfg, "RUN_AUTOPSY", False):
+        print("\n== AUTOPSY ==", flush=True)
+        from scripts.autopsy import run_autopsy
+
+        run_autopsy(eval_model, str(dataset_dir))
 
     print(f"\n== RUN COMPLETE == total {(time.time() - t0) / 60:.1f} min")
 

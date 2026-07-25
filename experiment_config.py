@@ -8,27 +8,28 @@ diff reads as the experiment's definition.
 # ---- model -----------------------------------------------------------------
 MODEL_VARIANT = "base"  # rfdetr variant: nano | small | medium | base | large
 RESOLUTION = 560        # square input size; must be divisible by 56 for base
-NUM_QUERIES = None      # None -> rfdetr default (300). Set an int to override.
-GPU_DEVICE = 0          # None -> auto; int -> pin train+eval to cuda:<idx>
+NUM_QUERIES = None      # 560px/300q checkpoint
+GPU_DEVICE = 3          # None -> auto; int -> pin train+eval to cuda:<idx>
 
 # ---- checkpoint reuse (inference-time experiments) --------------------------
 # Path to a trained checkpoint on the run host. When set, training is SKIPPED
 # and evaluation runs on this exact model — the correct design for pure
 # inference-time interventions (no seed variance). Missing file = hard error,
 # never a silent 6h retrain.
-REUSE_CHECKPOINT = None
+REUSE_CHECKPOINT = "/home/kromanowski/.orx/runs/2a04186d-9077-4a6d-aea0-1b930e82f3ec/repo/output/checkpoint_best_ema.pth"
 
 # ---- tiled (SAHI-style) evaluation ------------------------------------------
-EVAL_TILED = True       # run a second eval pass with sliced inference
-TILE_SIZE = 560         # square tile side, in ORIGINAL image pixels
+EVAL_TILED = False      # not used on this node
+EVAL_STANDARD = False   # parent numbers already recorded; autopsy only
+TILE_SIZE = 1008        # square tile side, in ORIGINAL image pixels
 TILE_OVERLAP = 0.2      # fractional overlap between adjacent tiles
 TILE_MERGE_IOU = 0.6    # class-aware NMS threshold when merging tile boxes
 TILE_INCLUDE_FULL = True  # also merge a full-image pass (SAHI standard)
 
 # ---- training --------------------------------------------------------------
 EPOCHS = 24
-BATCH_SIZE = 8
-GRAD_ACCUM_STEPS = 2    # effective batch = BATCH_SIZE * GRAD_ACCUM_STEPS
+BATCH_SIZE = 4
+GRAD_ACCUM_STEPS = 4    # effective batch = BATCH_SIZE * GRAD_ACCUM_STEPS
 LR = 1e-4               # rfdetr defaults; listed here so sweeps are one-line diffs
 LR_ENCODER = 1.5e-4
 NUM_WORKERS = 8
@@ -49,3 +50,8 @@ SIZE_BIN_EDGES = [0, 8, 16, 32, 96, float("inf")]
 DENSITY_BIN_EDGES = [0, 25, 50, 100, 200, float("inf")]  # GT objects per image
 
 OUTPUT_DIR = "output"
+
+# ---- autopsy (round 4) ------------------------------------------------------
+RUN_AUTOPSY = True        # stage-by-stage information tracing
+AUTOPSY_MAX_IMAGES = 548  # full val split
+AUTOPSY_VIZ_IMAGES = 6    # densest images get qualitative PNG artifacts
