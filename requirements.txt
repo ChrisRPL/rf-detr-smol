@@ -1,0 +1,7 @@
+# Cross-architecture (Ultralytics) run contract. Installed by the fixed run
+# command into the run host's venv. torch>=1.8 accepts the host's torch 2.13,
+# so this does not disturb it. rfdetr is intentionally absent on this branch.
+ultralytics==8.4.105
+opencv-python-headless>=4.9
+pycocotools
+huggingface_hub>=0.26
