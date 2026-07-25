@@ -205,29 +205,53 @@ def main() -> None:
     dataset_dir = prepare(cfg.HF_DATASET_REPO, cfg.DATA_ROOT, cfg.DATASET_DIR)
     print(f"[data] prepared in {time.time() - t0:.0f}s")
 
-    print("\n== TRAIN ==", flush=True)
-    model = build_model()
-    t1 = time.time()
-    model.train(
-        dataset_dir=str(dataset_dir),
-        epochs=cfg.EPOCHS,
-        batch_size=cfg.BATCH_SIZE,
-        grad_accum_steps=cfg.GRAD_ACCUM_STEPS,
-        lr=cfg.LR,
-        lr_encoder=cfg.LR_ENCODER,
-        num_workers=cfg.NUM_WORKERS,
-        checkpoint_interval=cfg.CHECKPOINT_INTERVAL,
-        early_stopping=cfg.EARLY_STOPPING,
-        output_dir=cfg.OUTPUT_DIR,
-        tensorboard=False,
-    )
-    print(f"[train] finished in {(time.time() - t1) / 60:.1f} min")
+    reuse = getattr(cfg, "REUSE_CHECKPOINT", None)
+    if reuse:
+        # Inference-time experiment: evaluate the parent's exact trained model.
+        # A missing file is a hard error — never fall back to a silent retrain,
+        # which would reintroduce seed variance into a same-model comparison.
+        reuse_path = Path(reuse).expanduser()
+        if not reuse_path.is_file():
+            raise SystemExit(f"REUSE_CHECKPOINT not found on this host: {reuse_path}")
+        print(f"\n== TRAIN == skipped, reusing checkpoint {reuse_path}", flush=True)
+        from rfdetr.detr import RFDETR
+
+        eval_model = RFDETR.from_checkpoint(reuse_path)
+    else:
+        print("\n== TRAIN ==", flush=True)
+        model = build_model()
+        t1 = time.time()
+        model.train(
+            dataset_dir=str(dataset_dir),
+            epochs=cfg.EPOCHS,
+            batch_size=cfg.BATCH_SIZE,
+            grad_accum_steps=cfg.GRAD_ACCUM_STEPS,
+            lr=cfg.LR,
+            lr_encoder=cfg.LR_ENCODER,
+            num_workers=cfg.NUM_WORKERS,
+            checkpoint_interval=cfg.CHECKPOINT_INTERVAL,
+            early_stopping=cfg.EARLY_STOPPING,
+            output_dir=cfg.OUTPUT_DIR,
+            tensorboard=False,
+        )
+        print(f"[train] finished in {(time.time() - t1) / 60:.1f} min")
+        eval_model = pick_eval_model(model, Path(cfg.OUTPUT_DIR))
 
     print("\n== EVALUATE ==", flush=True)
-    from scripts.evaluate import evaluate
+    if getattr(cfg, "EVAL_STANDARD", True):
+        from scripts.evaluate import evaluate
 
-    eval_model = pick_eval_model(model, Path(cfg.OUTPUT_DIR))
-    evaluate(eval_model, str(dataset_dir))
+        evaluate(eval_model, str(dataset_dir))
+    if getattr(cfg, "RUN_AUTOPSY", False):
+        print("\n== AUTOPSY ==", flush=True)
+        from scripts.autopsy import run_autopsy
+
+        run_autopsy(eval_model, str(dataset_dir))
+    if getattr(cfg, "RUN_CONFUSION", False):
+        print("\n== CLASS CONFUSION ==", flush=True)
+        from scripts.class_confusion import analyze
+
+        analyze(str(dataset_dir))
 
     print(f"\n== RUN COMPLETE == total {(time.time() - t0) / 60:.1f} min")
 
