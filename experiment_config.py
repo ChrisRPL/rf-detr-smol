@@ -11,10 +11,10 @@ thermal ATR targets.
 MODEL_VARIANT = "base"
 RESOLUTION = 560         # baseline, for comparability with the VisDrone baseline
 NUM_QUERIES = None       # rfdetr default (300); ATR is sparse (1-2 targets/frame)
-GPU_DEVICE = 0
+GPU_DEVICE = 1
 
 # ---- data (pre-built local COCO/roboflow dataset on the run host) -----------
-DATA_LOCAL_DIR = "/home/kromanowski/datasets/nvesd_atr/nvesd_atr_cegr"
+DATA_LOCAL_DIR = "/home/kromanowski/datasets/nvesd_atr/nvesd_atr_cegr_heldout"
 HF_DATASET_REPO = ""     # unused when DATA_LOCAL_DIR is set
 DATA_ROOT = "data"
 DATASET_DIR = "dataset"
