@@ -9,12 +9,13 @@ thermal ATR targets.
 
 # ---- model -----------------------------------------------------------------
 MODEL_VARIANT = "base"
-RESOLUTION = 560         # baseline, for comparability with the VisDrone baseline
+RESOLUTION = 560
 NUM_QUERIES = None       # rfdetr default (300); ATR is sparse (1-2 targets/frame)
 GPU_DEVICE = 0
 
 # ---- data (pre-built local COCO/roboflow dataset on the run host) -----------
 DATA_LOCAL_DIR = "/home/kromanowski/datasets/nvesd_atr/nvesd_atr_cegr"
+REUSE_CHECKPOINT = "/home/kromanowski/.orx/runs/9416287d-dd73-4e66-aecc-992323cad783/repo/output/checkpoint_best_ema.pth"
 HF_DATASET_REPO = ""     # unused when DATA_LOCAL_DIR is set
 DATA_ROOT = "data"
 DATASET_DIR = "dataset"
@@ -30,7 +31,7 @@ CHECKPOINT_INTERVAL = 10
 EARLY_STOPPING = False
 
 # ---- evaluation / taxonomy -------------------------------------------------
-EVAL_STANDARD = True
+EVAL_STANDARD = False   # autopsy only
 EVAL_TILED = False
 EVAL_SCORE_THRESHOLD = 0.05
 FP_SCORE_THRESHOLD = 0.30
@@ -41,7 +42,7 @@ DENSITY_BIN_EDGES = [0, 25, 50, 100, 200, float("inf")]
 OUTPUT_DIR = "output"
 
 # ---- analysis toggles ------------------------------------------------------
-RUN_AUTOPSY = False       # enable on the descendant node once the baseline lands
+RUN_AUTOPSY = True
 RUN_CONFUSION = False
 AUTOPSY_MAX_IMAGES = 898
 AUTOPSY_VIZ_IMAGES = 6
